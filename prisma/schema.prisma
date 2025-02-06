@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Sesuaikan dengan database yang digunakan
+    url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator typescriptInterfaces {
+  provider = "prisma-generator-typescript-interfaces"
+}
+
+
+// Tabel untuk menyimpan gejala
+model Symptom {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique
+  category       String           // Kategori gejala (umum, spesifik, faktor risiko)
+  importanceScore Int             // Bobot kepentingan gejala (1-10)
+  source         String           // Sumber data gejala
+  correlations   SymptomDiabetesCorrelation[]
+  ruleConditions RuleCondition[]
+  DiagnosisHistorySymptom DiagnosisHistorySymptom[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime?         @updatedAt
+}
+
+// Tabel untuk menyimpan tipe diabetes
+model DiabetesType {
+  id           Int                      @id @default(autoincrement())
+  name         String                   @unique
+  correlations SymptomDiabetesCorrelation[]
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime?                @updatedAt
+}
+
+// Tabel untuk menyimpan korelasi antara gejala dan tipe diabetes
+model SymptomDiabetesCorrelation {
+  id             Int          @id @default(autoincrement())
+  symptomId      Int
+  diabetesTypeId Int
+
+  symptom        Symptom      @relation(fields: [symptomId], references: [id])
+  diabetesType   DiabetesType @relation(fields: [diabetesTypeId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?    @updatedAt
+}
+
+// Tabel untuk menyimpan aturan diagnosis
+model DiagnosisRule {
+  id             Int             @id @default(autoincrement())
+  ruleDescription String          // Deskripsi aturan diagnosis
+  outputDiagnosis String          // Hasil diagnosis berdasarkan aturan
+  ruleConditions  RuleCondition[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime?       @updatedAt
+}
+
+// Tabel untuk menyimpan kondisi yang terkait dengan aturan diagnosis
+model RuleCondition {
+  id         Int       @id @default(autoincrement())
+  ruleId     Int
+  symptomId  Int
+
+  rule       DiagnosisRule @relation(fields: [ruleId], references: [id])
+  symptom    Symptom       @relation(fields: [symptomId], references: [id])
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime?     @updatedAt
+}
+
+// Tabel untuk menyimpan histori diagnosis pengguna
+model DiagnosisHistory {
+  id            Int        @id @default(autoincrement())
+  userId        String     // ID pengguna untuk tracking (anonim)
+  diagnosis     String     // Hasil diagnosis
+  probability   String     // Probabilitas hasil diagnosis (Sangat Tinggi, Tinggi, dll.)
+  createdAt     DateTime   @default(now())
+
+  symptoms      DiagnosisHistorySymptom[]
+}
+
+// Tabel untuk menyimpan gejala yang dipilih dalam histori diagnosis
+model DiagnosisHistorySymptom {
+  id           Int        @id @default(autoincrement())
+  historyId    Int
+  symptomId    Int
+
+  history      DiagnosisHistory @relation(fields: [historyId], references: [id])
+  symptom      Symptom          @relation(fields: [symptomId], references: [id])
+}
